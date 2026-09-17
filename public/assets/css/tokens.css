@@ -1,0 +1,77 @@
+/*
+ * laundry.co.ke — design tokens.
+ *
+ * Ported from the real artcollect.co.ke token architecture (see
+ * planning/00-portfolio/artcollect-design-system.md §2). The neutral
+ * canvas/ink pair, spacing scale, radii, and motion durations are adopted
+ * unchanged; the platform accent is set to COBALT (the "vector" lane in
+ * artcollect's system) — chosen for laundry.co.ke's clean/trust association.
+ * Swap --ac-accent (and its dark-mode override) to re-theme this platform;
+ * every component below reads --ac-accent, never a hardcoded color.
+ */
+
+:root {
+  /* Neutrals — the one canvas, the one ink (unchanged from artcollect.co.ke). */
+  --ac-paper: #f5f1e8;
+  --ac-ink: #161311;
+  --ac-paper-deep: #eae2d0;
+
+  /* This platform's accent (cobalt — artcollect's "vector" lane). */
+  --ac-accent: #1f4fd8;
+  --ac-accent-contrast: #ffffff;
+
+  /* Status colors — shared meaning across all five marketplace platforms,
+     independent of the platform accent above. */
+  --ac-success: #2d6a4f;
+  --ac-warning: #b98900;
+  --ac-danger: #b3261e;
+
+  /* Supporting tints, used only as decorative backing shapes (see scrap.js). */
+  --ac-highlighter: #f2df4f;
+  --ac-sticker-pink: #f5c6d6;
+
+  /* Hard offset-shadow ink (the collage "sticker lift" from artcollect.co.ke). */
+  --ac-shadow-ink: rgba(22, 19, 17, 1);
+
+  /* Spacing & grid — one 4px-based scale (unchanged from artcollect.co.ke). */
+  --ac-space-1: 0.25rem;
+  --ac-space-2: 0.5rem;
+  --ac-space-3: 0.75rem;
+  --ac-space-4: 1rem;
+  --ac-space-6: 1.5rem;
+  --ac-space-8: 2rem;
+  --ac-space-12: 3rem;
+  --ac-space-16: 4rem;
+  --ac-space-24: 6rem;
+  --ac-gutter: clamp(1rem, 4vw, 2.5rem);
+  --ac-measure: 64ch;
+  --ac-content-max: 72rem;
+
+  /* Radii: sharp for "paper" shapes, rounded for "sticker"/badge shapes. */
+  --ac-radius-scrap: 0.125rem;
+  --ac-radius-sticker: 0.75rem;
+  --ac-radius-control: 0.5rem;
+
+  /* Motion — one duration scale. Scroll/reveal animation must only ever
+     animate transform/opacity — see artcollect-design-system.md §7. */
+  --ac-motion-fast: 160ms;
+  --ac-motion-base: 320ms;
+  --ac-motion-slow: 640ms;
+
+  /* Typography — three roles, per artcollect-design-system.md §3.
+     Font families are placeholders: swap for this platform's chosen
+     display/body/hand faces without touching any component CSS. */
+  --font-display: "Archivo Black", "Arial Black", sans-serif;
+  --font-body: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-hand: "Caveat", cursive;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ac-paper: #17130f;
+    --ac-ink: #f2ecdf;
+    --ac-paper-deep: #252019;
+    --ac-accent: #8ba3f5; /* brightened cobalt, holds contrast on the dark canvas */
+    --ac-shadow-ink: rgba(0, 0, 0, 0.85);
+  }
+}

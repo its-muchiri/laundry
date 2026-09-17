@@ -1,0 +1,202 @@
+@import url("tokens.css");
+@import url("reset.css");
+
+/*
+ * laundry.co.ke — base layout + shared component styles.
+ * See planning/00-portfolio/design-system.md for the full shared-component
+ * spec this implements, and artcollect-design-system.md §6 for the page/
+ * section structure patterns (global layout, homepage sequence, listing,
+ * detail, profile) these classes are meant to compose into.
+ */
+
+body {
+  background: var(--ac-paper);
+  color: var(--ac-ink);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: 1.15;
+}
+
+.container {
+  max-width: var(--ac-content-max);
+  margin-inline: auto;
+  padding-inline: var(--ac-gutter);
+}
+
+/* Keyboard focus must always be visible — non-negotiable per
+   artcollect-design-system.md §8. */
+:focus-visible {
+  outline: 3px solid var(--ac-accent);
+  outline-offset: 2px;
+}
+
+/* ---- Header / Footer ---- */
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  padding-block: var(--ac-space-4);
+  border-bottom: 1px solid var(--ac-paper-deep);
+}
+
+.site-footer {
+  padding-block: var(--ac-space-12);
+  border-top: 1px solid var(--ac-paper-deep);
+  background: var(--ac-paper-deep);
+}
+
+/* ---- Card (shared component, see design-system.md) ---- */
+
+.card {
+  background: var(--ac-paper);
+  border: 1px solid var(--ac-paper-deep);
+  border-radius: var(--ac-radius-control);
+  padding: var(--ac-space-4);
+  transition: transform var(--ac-motion-fast) ease, box-shadow var(--ac-motion-fast) ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--ac-shadow-ink);
+}
+
+.card__meta {
+  display: flex;
+  gap: var(--ac-space-2);
+  color: color-mix(in srgb, var(--ac-ink) 65%, transparent);
+  font-size: 0.875rem;
+}
+
+/* ---- CTA Button ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-3) var(--ac-space-6);
+  border-radius: var(--ac-radius-control);
+  border: none;
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--ac-motion-fast) ease;
+}
+
+.btn--primary {
+  background: var(--ac-accent);
+  color: var(--ac-accent-contrast);
+}
+
+.btn--secondary {
+  background: transparent;
+  color: var(--ac-accent);
+  border: 2px solid var(--ac-accent);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* ---- Modal ---- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ac-space-4);
+}
+
+.modal {
+  background: var(--ac-paper);
+  border-radius: var(--ac-radius-control);
+  padding: var(--ac-space-6);
+  max-width: 32rem;
+  width: 100%;
+}
+
+/* ---- FAB (used by laundry.co.ke — high-frequency primary action) ---- */
+
+.fab {
+  position: fixed;
+  bottom: var(--ac-space-6);
+  right: var(--ac-space-6);
+  border-radius: 999px;
+  padding: var(--ac-space-4) var(--ac-space-6);
+  background: var(--ac-accent);
+  color: var(--ac-accent-contrast);
+  box-shadow: 0 4px 0 var(--ac-shadow-ink);
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+/* ---- Status Timeline ---- */
+
+.status-timeline {
+  display: flex;
+  gap: var(--ac-space-2);
+  list-style: none;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.status-timeline__step {
+  flex: 1 0 auto;
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-radius: var(--ac-radius-sticker);
+  background: var(--ac-paper-deep);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.status-timeline__step--done {
+  background: var(--ac-accent);
+  color: var(--ac-accent-contrast);
+}
+
+/* ---- Booking Calendar / Slot Picker ---- */
+
+.slot-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  gap: var(--ac-space-2);
+}
+
+.slot-picker__slot {
+  padding: var(--ac-space-2);
+  border: 1px solid var(--ac-paper-deep);
+  border-radius: var(--ac-radius-control);
+  background: var(--ac-paper);
+  cursor: pointer;
+}
+
+.slot-picker__slot[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.slot-picker__slot[aria-selected="true"] {
+  border-color: var(--ac-accent);
+  background: color-mix(in srgb, var(--ac-accent) 12%, var(--ac-paper));
+}
+
+/*
+ * ---- Critical-flow lockout ----
+ * Per artcollect-design-system.md §7: payment, escrow-confirmation, and
+ * dispute screens carry zero decorative motion or heavy visual treatment.
+ * Any page rendering this class must not load scrap.js or any decorative
+ * module — enforced at the JS layer in pages/checkout.js, mirrored here so
+ * the rule is visible in the stylesheet too.
+ */
+.critical-flow * {
+  animation: none !important;
+}
