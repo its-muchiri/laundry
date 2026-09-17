@@ -3,6 +3,7 @@
 namespace Laundry\Controllers;
 
 use Laundry\Config\Database;
+use Laundry\Core\Auth;
 use Laundry\Core\Request;
 use Laundry\Core\Response;
 
@@ -19,6 +20,11 @@ final class OnboardingController
 {
     public function submit(Request $request): void
     {
+        $user = Auth::requireUser($request);
+        if (!$user) {
+            return;
+        }
+
         $db = Database::connection();
         $documents = $request->input('documents', []); // [{ document_type, file_reference }]
 
@@ -29,13 +35,13 @@ final class OnboardingController
 
         $stmt = $db->prepare(
             'INSERT INTO kyc_documents (user_id, document_type, file_reference, verification_status)
-             VALUES (:user_id, :document_type, :file_reference, "pending")'
+             VALUES (:user_id, :document_type, :file_reference, \'pending\')'
         );
 
         $submitted = [];
         foreach ($documents as $document) {
             $stmt->execute([
-                'user_id' => $request->user['id'] ?? null,
+                'user_id' => $user['id'],
                 'document_type' => $document['document_type'],
                 'file_reference' => $document['file_reference'],
             ]);
@@ -45,8 +51,8 @@ final class OnboardingController
         // Operator remains "pending_verification" (see users.status enum)
         // until a Platform Admin approves every submitted document — see
         // this platform's user-flows.md Primary Supply-Side Journey step 3.
-        $stmt = $db->prepare('UPDATE users SET status = "pending_verification" WHERE id = :id');
-        $stmt->execute(['id' => $request->user['id'] ?? null]);
+        $stmt = $db->prepare('UPDATE users SET status = \'pending_verification\' WHERE id = :id');
+        $stmt->execute(['id' => $user['id']]);
 
         Response::json(['kyc_document_ids' => $submitted, 'status' => 'pending_verification'], 201);
     }

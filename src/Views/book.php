@@ -1,4 +1,11 @@
+<?php /** @var array|null $currentUser */ ?>
 <h1>Book a pickup</h1>
+
+<?php if (empty($currentUser)): ?>
+  <p class="card__meta">
+    <a href="/login">Log in</a> or <a href="/signup">sign up</a> first to book a pickup.
+  </p>
+<?php endif; ?>
 
 <form id="booking-form" style="max-width: 32rem; display:flex; flex-direction:column; gap: var(--ac-space-4);">
   <label>
@@ -68,12 +75,13 @@
       });
       const data = await res.json();
 
+      if (res.status === 401) {
+        resultEl.innerHTML = 'You need to <a href="/login">log in</a> first to book a pickup.';
+        return;
+      }
+
       if (!res.ok) {
-        // Expected right now: no auth middleware exists yet (see
-        // src/Core/Request.php), so `customer_id` resolves to null and the
-        // database rejects the insert. This is the real, current state of
-        // the app, not a demo bug.
-        resultEl.textContent = "Booking failed: " + (data.error || "unknown error") + " — expected until auth middleware is wired up.";
+        resultEl.textContent = "Booking failed: " + (data.error || "unknown error");
         return;
       }
 

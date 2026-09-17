@@ -3,6 +3,7 @@
 namespace Laundry\Controllers;
 
 use Laundry\Config\Database;
+use Laundry\Core\Auth;
 use Laundry\Core\Request;
 use Laundry\Core\Response;
 
@@ -18,13 +19,18 @@ final class OperatorController
 {
     public function setCapacity(Request $request): void
     {
+        $user = Auth::requireUser($request);
+        if (!$user) {
+            return;
+        }
+
         $db = Database::connection();
         $stmt = $db->prepare(
             'INSERT INTO machine_capacity (operator_id, date, slot_start, slot_end, max_kg_capacity, max_orders, is_active)
              VALUES (:operator_id, :date, :slot_start, :slot_end, :max_kg, :max_orders, true)'
         );
         $stmt->execute([
-            'operator_id' => $request->user['id'] ?? null,
+            'operator_id' => $user['id'],
             'date' => $request->input('date'),
             'slot_start' => $request->input('slot_start'),
             'slot_end' => $request->input('slot_end'),
@@ -37,24 +43,34 @@ final class OperatorController
 
     public function getCapacity(Request $request): void
     {
+        $user = Auth::requireUser($request);
+        if (!$user) {
+            return;
+        }
+
         $db = Database::connection();
         $stmt = $db->prepare(
             'SELECT * FROM machine_capacity WHERE operator_id = :operator_id AND date >= CURDATE() ORDER BY date, slot_start'
         );
-        $stmt->execute(['operator_id' => $request->user['id'] ?? null]);
+        $stmt->execute(['operator_id' => $user['id']]);
 
         Response::json($stmt->fetchAll());
     }
 
     public function setServiceArea(Request $request): void
     {
+        $user = Auth::requireUser($request);
+        if (!$user) {
+            return;
+        }
+
         $db = Database::connection();
         $stmt = $db->prepare(
             'INSERT INTO operator_service_areas (operator_id, area_type, center_lat, center_lng, radius_km, neighborhood_names)
              VALUES (:operator_id, :area_type, :center_lat, :center_lng, :radius_km, :neighborhoods)'
         );
         $stmt->execute([
-            'operator_id' => $request->user['id'] ?? null,
+            'operator_id' => $user['id'],
             'area_type' => $request->input('area_type'),
             'center_lat' => $request->input('center_lat'),
             'center_lng' => $request->input('center_lng'),
@@ -68,7 +84,7 @@ final class OperatorController
     public function profile(Request $request): void
     {
         $db = Database::connection();
-        $stmt = $db->prepare('SELECT id, full_name, status FROM users WHERE id = :id AND account_type = "provider"');
+        $stmt = $db->prepare('SELECT id, full_name, status FROM users WHERE id = :id AND account_type = \'provider\'');
         $stmt->execute(['id' => $request->params['id']]);
         $operator = $stmt->fetch();
 
@@ -86,12 +102,21 @@ final class OperatorController
 
     public function prefer(Request $request): void
     {
+        $user = Auth::requireUser($request);
+        if (!$user) {
+            return;
+        }
+
         $db = Database::connection();
-        $stmt = $db->prepare(
-            'INSERT INTO preferred_operators (customer_id, operator_id, created_at) VALUES (:customer_id, :operator_id, NOW())
-             ON DUPLICATE KEY UPDATE created_at = created_at'
-        );
-        $stmt->execute(['customer_id' => $request->user['id'] ?? null, 'operator_id' => $request->params['id']]);
+        // See Database::driver() and planning/00-portfolio/ui-implementation-plan.md
+        // for why this branches (Vercel's Marketplace has no MySQL-compatible database).
+        $sql = Database::driver() === 'pgsql'
+            ? 'INSERT INTO preferred_operators (customer_id, operator_id, created_at) VALUES (:customer_id, :operator_id, NOW())
+               ON CONFLICT (customer_id, operator_id) DO NOTHING'
+            : 'INSERT INTO preferred_operators (customer_id, operator_id, created_at) VALUES (:customer_id, :operator_id, NOW())
+               ON DUPLICATE KEY UPDATE created_at = created_at';
+        $stmt = $db->prepare($sql);
+        $stmt->execute(['customer_id' => $user['id'], 'operator_id' => $request->params['id']]);
 
         Response::json(['status' => 'preferred']);
     }

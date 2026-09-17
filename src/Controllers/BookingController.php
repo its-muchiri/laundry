@@ -3,6 +3,7 @@
 namespace Laundry\Controllers;
 
 use Laundry\Config\Database;
+use Laundry\Core\Auth;
 use Laundry\Core\Request;
 use Laundry\Core\Response;
 
@@ -17,6 +18,11 @@ final class BookingController
 {
     public function create(Request $request): void
     {
+        $user = Auth::requireUser($request);
+        if (!$user) {
+            return;
+        }
+
         $db = Database::connection();
 
         // TODO: resolve nearest available operator via machine_capacity +
@@ -28,13 +34,13 @@ final class BookingController
                  delivery_address, scheduled_pickup_slot_start, scheduled_pickup_slot_end,
                  estimated_item_count, estimated_weight_kg, special_instructions,
                  estimated_price, payment_timing, created_at, updated_at)
-             VALUES (:customer_id, "requested", :service_tier, :pickup_address, :pickup_lat, :pickup_lng,
+             VALUES (:customer_id, \'requested\', :service_tier, :pickup_address, :pickup_lat, :pickup_lng,
                  :delivery_address, :slot_start, :slot_end, :item_count, :weight_kg, :instructions,
                  :estimated_price, :payment_timing, NOW(), NOW())'
         );
 
         $stmt->execute([
-            'customer_id' => $request->user['id'] ?? null,
+            'customer_id' => $user['id'],
             'service_tier' => $request->input('service_tier'),
             'pickup_address' => $request->input('pickup_address'),
             'pickup_lat' => $request->input('pickup_lat'),
@@ -69,9 +75,14 @@ final class BookingController
 
     public function index(Request $request): void
     {
+        $user = Auth::requireUser($request);
+        if (!$user) {
+            return;
+        }
+
         $db = Database::connection();
         $stmt = $db->prepare('SELECT * FROM laundry_bookings WHERE customer_id = :customer_id ORDER BY created_at DESC');
-        $stmt->execute(['customer_id' => $request->user['id'] ?? null]);
+        $stmt->execute(['customer_id' => $user['id']]);
 
         Response::json($stmt->fetchAll());
     }
@@ -109,10 +120,14 @@ final class BookingController
 
     public function confirmReceipt(Request $request): void
     {
+        if (!Auth::requireUser($request)) {
+            return;
+        }
+
         // TODO: call into the shared Escrow Engine to release payment to the
         // operator minus commission. See shared-architecture.md.
         $db = Database::connection();
-        $stmt = $db->prepare('UPDATE laundry_bookings SET status = "delivered", updated_at = NOW() WHERE id = :id');
+        $stmt = $db->prepare('UPDATE laundry_bookings SET status = \'delivered\', updated_at = NOW() WHERE id = :id');
         $stmt->execute(['id' => $request->params['id']]);
 
         Response::json(['id' => (int) $request->params['id'], 'status' => 'delivered', 'escrow' => 'release_pending']);
@@ -120,9 +135,13 @@ final class BookingController
 
     public function cancel(Request $request): void
     {
+        if (!Auth::requireUser($request)) {
+            return;
+        }
+
         // TODO: apply cancellation-fee policy — see open-questions.md #6.
         $db = Database::connection();
-        $stmt = $db->prepare('UPDATE laundry_bookings SET status = "cancelled", updated_at = NOW() WHERE id = :id');
+        $stmt = $db->prepare('UPDATE laundry_bookings SET status = \'cancelled\', updated_at = NOW() WHERE id = :id');
         $stmt->execute(['id' => $request->params['id']]);
 
         Response::json(['id' => (int) $request->params['id'], 'status' => 'cancelled']);

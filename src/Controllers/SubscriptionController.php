@@ -47,7 +47,7 @@ final class SubscriptionController
             'INSERT INTO subscriptions
                 (customer_id, plan_type, pickups_included, weight_cap_kg, monthly_price, status,
                  current_cycle_start, current_cycle_end, created_at)
-             VALUES (:customer_id, :plan_type, :pickups_included, :weight_cap_kg, :price, "active",
+             VALUES (:customer_id, :plan_type, :pickups_included, :weight_cap_kg, :price, \'active\',
                  CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 MONTH), NOW())'
         );
         $stmt->execute([
@@ -65,7 +65,7 @@ final class SubscriptionController
     {
         $db = Database::connection();
         $stmt = $db->prepare(
-            'SELECT * FROM subscriptions WHERE customer_id = :customer_id AND status = "active" ORDER BY created_at DESC LIMIT 1'
+            'SELECT * FROM subscriptions WHERE customer_id = :customer_id AND status = \'active\' ORDER BY created_at DESC LIMIT 1'
         );
         $stmt->execute(['customer_id' => $request->user['id'] ?? null]);
         $subscription = $stmt->fetch();
@@ -82,7 +82,7 @@ final class SubscriptionController
     {
         $db = Database::connection();
         $stmt = $db->prepare(
-            'UPDATE subscriptions SET status = "cancelled" WHERE customer_id = :customer_id AND status = "active"'
+            'UPDATE subscriptions SET status = \'cancelled\' WHERE customer_id = :customer_id AND status = \'active\''
         );
         $stmt->execute(['customer_id' => $request->user['id'] ?? null]);
 

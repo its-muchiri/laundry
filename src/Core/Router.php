@@ -7,9 +7,10 @@ namespace Laundry\Core;
  * `$router->get('/api/v1/bookings/{id}', [BookingController::class, 'show'])`.
  * `{param}` segments are captured into `$request->params`.
  *
- * No middleware/auth pipeline is implemented here — each controller method
- * is responsible for calling out to the (not-yet-implemented) shared auth
- * check for now. See planning/00-portfolio/shared-architecture.md.
+ * No middleware pipeline is implemented here — `$request->user` is already
+ * populated (see public/index.php + src/Core/Auth.php) before dispatch, so
+ * each controller method that requires a logged-in user calls
+ * Auth::requireUser($request) itself rather than this router gating routes.
  */
 final class Router
 {

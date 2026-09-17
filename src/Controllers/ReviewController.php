@@ -3,6 +3,7 @@
 namespace Laundry\Controllers;
 
 use Laundry\Config\Database;
+use Laundry\Core\Auth;
 use Laundry\Core\Request;
 use Laundry\Core\Response;
 
@@ -15,6 +16,11 @@ final class ReviewController
 {
     public function store(Request $request): void
     {
+        $user = Auth::requireUser($request);
+        if (!$user) {
+            return;
+        }
+
         $db = Database::connection();
         $stmt = $db->prepare(
             'INSERT INTO reviews (booking_id, reviewer_id, reviewee_id, rating, comment, created_at)
@@ -22,7 +28,7 @@ final class ReviewController
         );
         $stmt->execute([
             'booking_id' => $request->params['id'],
-            'reviewer_id' => $request->user['id'] ?? null,
+            'reviewer_id' => $user['id'],
             'reviewee_id' => $request->input('reviewee_id'),
             'rating' => $request->input('rating'),
             'comment' => $request->input('comment'),

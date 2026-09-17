@@ -4,9 +4,10 @@ namespace Laundry\Core;
 
 /**
  * Thin wrapper over the incoming HTTP request: method, path, JSON body,
- * query params, and the authenticated-user context set by auth middleware
- * (not implemented in this scaffold — see planning/00-portfolio/shared-architecture.md
- * for the shared identity/auth module this should eventually delegate to).
+ * query params, and the authenticated-user context. `$user` is populated
+ * by public/index.php via Auth::currentUser() before dispatch (see
+ * src/Core/Auth.php — this platform's session-based implementation of the
+ * shared identity/auth module in planning/00-portfolio/shared-architecture.md).
  */
 final class Request
 {
@@ -34,9 +35,18 @@ final class Request
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 
-        $rawBody = file_get_contents('php://input') ?: '';
-        $decoded = json_decode($rawBody, true);
-        $body = is_array($decoded) ? $decoded : [];
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        if (str_contains($contentType, 'application/json')) {
+            $rawBody = file_get_contents('php://input') ?: '';
+            $decoded = json_decode($rawBody, true);
+            $body = is_array($decoded) ? $decoded : [];
+        } else {
+            // Native HTML form submissions (application/x-www-form-urlencoded
+            // or multipart/form-data, e.g. the signup/login pages) — PHP
+            // already parses these into $_POST; php://input is empty/unusable
+            // for multipart bodies once $_POST has consumed the stream.
+            $body = $_POST;
+        }
 
         return new self($method, $path, $_GET, $body);
     }

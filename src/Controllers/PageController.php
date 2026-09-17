@@ -26,7 +26,7 @@ final class PageController
                 'SELECT u.id, u.full_name, q.average_rating, q.completed_orders_count
                  FROM users u
                  LEFT JOIN operator_quality_scores q ON q.operator_id = u.id
-                 WHERE u.account_type = "provider" AND u.status = "active"
+                 WHERE u.account_type = \'provider\' AND u.status = \'active\'
                  ORDER BY q.average_rating DESC
                  LIMIT 6'
             );
