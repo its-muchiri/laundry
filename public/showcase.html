@@ -37,6 +37,11 @@
     </section>
 
     <section class="showcase-section">
+      <h2>Status Badge (new — pixel lane, code-generated)</h2>
+      <div class="showcase-row" id="badge-demo"></div>
+    </section>
+
+    <section class="showcase-section">
       <h2>FAB</h2>
       <p class="card__meta">Bottom-right corner of this page — laundry.co.ke's primary quick action.</p>
     </section>
@@ -62,6 +67,7 @@
     import { createStatusTimeline, LAUNDRY_BOOKING_STEPS } from "/assets/js/components/status-timeline.js";
     import { createSlotPicker } from "/assets/js/components/booking-calendar.js";
     import { createFab } from "/assets/js/components/fab.js";
+    import { createStatusBadge } from "/assets/js/components/status-badge.js";
     import { openModal } from "/assets/js/components/modal.js";
 
     // Card
@@ -95,6 +101,13 @@
         onSelect: (slotId) => { slotOutput.textContent = `Selected slot: ${slotId}`; },
       })
     );
+
+    // Status Badge
+    const badgeDemo = document.getElementById("badge-demo");
+    badgeDemo.appendChild(createStatusBadge({ label: "requested", tone: "neutral" }));
+    badgeDemo.appendChild(createStatusBadge({ label: "washing", tone: "warning" }));
+    badgeDemo.appendChild(createStatusBadge({ label: "delivered", tone: "success", icon: "check" }));
+    badgeDemo.appendChild(createStatusBadge({ label: "disputed", tone: "danger", icon: "alert" }));
 
     // FAB
     document.body.appendChild(createFab({ label: "Book Pickup", onClick: () => alert("FAB clicked — would open the booking flow") }));

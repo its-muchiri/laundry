@@ -1,5 +1,6 @@
 <?php
 /** @var array $operators */
+/** @var string|null $dbError */
 use Laundry\Core\View;
 ?>
 <section style="padding-block: var(--ac-space-8) var(--ac-space-12);">
@@ -12,7 +13,9 @@ use Laundry\Core\View;
 
 <section>
   <h2>Trusted operators near you</h2>
-  <?php if (empty($operators)): ?>
+  <?php if ($dbError): ?>
+    <p class="card__meta"><?= View::e($dbError) ?></p>
+  <?php elseif (empty($operators)): ?>
     <p class="card__meta">No operators are onboarded yet in this environment — see src/Controllers/OnboardingController.php to add one, or seed the <code>users</code>/<code>operator_quality_scores</code> tables directly for a demo.</p>
   <?php else: ?>
     <div style="display:flex; flex-wrap:wrap; gap: var(--ac-space-4);">
