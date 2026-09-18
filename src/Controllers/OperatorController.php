@@ -50,7 +50,7 @@ final class OperatorController
 
         $db = Database::connection();
         $stmt = $db->prepare(
-            'SELECT * FROM machine_capacity WHERE operator_id = :operator_id AND date >= CURDATE() ORDER BY date, slot_start'
+            'SELECT * FROM machine_capacity WHERE operator_id = :operator_id AND date >= CURRENT_DATE ORDER BY date, slot_start'
         );
         $stmt->execute(['operator_id' => $user['id']]);
 

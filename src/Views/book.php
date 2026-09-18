@@ -10,8 +10,14 @@
 <form id="booking-form" style="max-width: 32rem; display:flex; flex-direction:column; gap: var(--ac-space-4);">
   <label>
     Pickup address
-    <input type="text" name="pickup_address" required style="display:block; width:100%; padding: var(--ac-space-2); margin-top: var(--ac-space-1);">
+    <input type="text" name="pickup_address" required placeholder="e.g. Kilimani, Nairobi" style="display:block; width:100%; padding: var(--ac-space-2); margin-top: var(--ac-space-1);">
   </label>
+
+  <div>
+    <button type="button" class="btn btn--secondary" id="use-location-btn">Use my current location</button>
+    <p id="location-status" class="card__meta" style="margin-top: var(--ac-space-2);">Location not set yet — required to match you to a nearby operator.</p>
+  </div>
+
   <label>
     Service tier
     <select name="service_tier" style="display:block; width:100%; padding: var(--ac-space-2); margin-top: var(--ac-space-1);">
@@ -21,8 +27,18 @@
     </select>
   </label>
 
+  <label>
+    Estimated number of garments
+    <input type="number" name="estimated_item_count" min="1" value="5" style="display:block; width:100%; padding: var(--ac-space-2); margin-top: var(--ac-space-1);">
+  </label>
+
+  <label>
+    Special instructions (optional)
+    <textarea name="special_instructions" rows="2" style="display:block; width:100%; padding: var(--ac-space-2); margin-top: var(--ac-space-1);"></textarea>
+  </label>
+
   <div>
-    <button type="button" class="btn btn--secondary" id="find-slots-btn">Find available slots</button>
+    <button type="button" class="btn btn--secondary" id="find-slots-btn" disabled>Find available slots</button>
     <div id="slot-picker-container" style="margin-top: var(--ac-space-3);"></div>
   </div>
 
@@ -34,26 +50,60 @@
 <script type="module">
   import { createSlotPicker } from "/assets/js/components/booking-calendar.js";
 
-  let selectedSlot = null;
+  let selectedSlot = null; // { start: ISOString, end: ISOString }
+  let pickupLat = null;
+  let pickupLng = null;
 
-  document.getElementById("find-slots-btn").addEventListener("click", async () => {
+  const locationStatus = document.getElementById("location-status");
+  const findSlotsBtn = document.getElementById("find-slots-btn");
+
+  document.getElementById("use-location-btn").addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      locationStatus.textContent = "Your browser doesn't support geolocation — enter your address and try a different device, or contact support.";
+      return;
+    }
+    locationStatus.textContent = "Requesting location…";
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        pickupLat = position.coords.latitude;
+        pickupLng = position.coords.longitude;
+        locationStatus.textContent = `Location set (${pickupLat.toFixed(4)}, ${pickupLng.toFixed(4)})`;
+        findSlotsBtn.disabled = false;
+      },
+      (error) => {
+        locationStatus.textContent = "Couldn't get your location: " + error.message + ". Allow location access and try again.";
+      }
+    );
+  });
+
+  findSlotsBtn.addEventListener("click", async () => {
     const container = document.getElementById("slot-picker-container");
+    if (pickupLat === null || pickupLng === null) {
+      container.textContent = "Set your location first.";
+      return;
+    }
     container.textContent = "Loading…";
     try {
-      const res = await fetch("/api/v1/availability/slots");
+      const res = await fetch(`/api/v1/availability/slots?lat=${pickupLat}&lng=${pickupLng}`);
       const data = await res.json();
       container.innerHTML = "";
-      if (!data.slots || data.slots.length === 0) {
-        // Honest reflection of the current backend state — see
-        // BookingController::availableSlots()'s TODO: the machine_capacity
-        // matching query isn't implemented yet, so this is always empty
-        // against a real database right now.
-        container.textContent = "No slots available — availability matching isn't implemented yet (see src/Controllers/BookingController.php::availableSlots).";
+      if (!res.ok) {
+        container.textContent = "Error loading slots: " + (data.error || "unknown error");
         return;
       }
-      container.appendChild(createSlotPicker({ slots: data.slots, onSelect: (id) => { selectedSlot = id; } }));
+      if (!data.slots || data.slots.length === 0) {
+        container.textContent = "No operators currently cover this address. Try a different time, or check back soon.";
+        return;
+      }
+      container.appendChild(createSlotPicker({
+        slots: data.slots,
+        onSelect: (id) => {
+          const [start, end] = id.split("|");
+          selectedSlot = { start, end };
+        },
+      }));
     } catch (e) {
-      container.textContent = "Error loading slots: " + e.message;
+      container.textContent = "Network error: " + e.message;
     }
   });
 
@@ -62,15 +112,28 @@
     const formData = new FormData(event.target);
     const resultEl = document.getElementById("booking-result");
 
+    if (pickupLat === null || pickupLng === null) {
+      resultEl.textContent = "Set your location before confirming.";
+      return;
+    }
+    if (!selectedSlot) {
+      resultEl.textContent = "Choose a pickup slot before confirming.";
+      return;
+    }
+
     try {
       const res = await fetch("/api/v1/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pickup_address: formData.get("pickup_address"),
+          pickup_lat: pickupLat,
+          pickup_lng: pickupLng,
           service_tier: formData.get("service_tier"),
-          scheduled_pickup_slot_start: new Date().toISOString(),
-          scheduled_pickup_slot_end: new Date(Date.now() + 3600_000).toISOString(),
+          estimated_item_count: Number(formData.get("estimated_item_count")) || 5,
+          special_instructions: formData.get("special_instructions"),
+          scheduled_pickup_slot_start: selectedSlot.start,
+          scheduled_pickup_slot_end: selectedSlot.end,
         }),
       });
       const data = await res.json();
@@ -85,7 +148,10 @@
         return;
       }
 
-      resultEl.innerHTML = `Booking #${data.id} created (status: ${data.status}). <a href="/bookings/${data.id}">Track it</a>`;
+      const statusNote = data.status === "matched"
+        ? "matched to an operator"
+        : (data.message || "saved, awaiting an available operator");
+      resultEl.innerHTML = `Booking #${data.id} created (${statusNote}). <a href="/bookings/${data.id}">Track it</a>`;
     } catch (e) {
       resultEl.textContent = "Network error: " + e.message;
     }
