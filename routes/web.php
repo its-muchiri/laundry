@@ -9,10 +9,18 @@
  * @var \Laundry\Core\Router $router
  */
 
+use Laundry\Controllers\AuthController;
 use Laundry\Controllers\PageController;
 
 $page = new PageController();
+$auth = new AuthController();
 
 $router->get('/', [$page, 'home']);
 $router->get('/book', [$page, 'bookForm']);
 $router->get('/bookings/{id}', [$page, 'bookingStatus']);
+
+$router->get('/signup', [$auth, 'showSignup']);
+$router->post('/signup', [$auth, 'register']);
+$router->get('/login', [$auth, 'showLogin']);
+$router->post('/login', [$auth, 'login']);
+$router->post('/logout', [$auth, 'logout']);

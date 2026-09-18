@@ -14,6 +14,7 @@ if (is_file($envFile)) {
     }
 }
 
+use Laundry\Core\Auth;
 use Laundry\Core\Request;
 use Laundry\Core\Response;
 use Laundry\Core\Router;
@@ -26,12 +27,16 @@ $debug = getenv('APP_DEBUG') === 'true';
 ini_set('display_errors', $debug ? '1' : '0');
 error_reporting(E_ALL);
 
+Auth::start();
+
 $router = new Router();
 require __DIR__ . '/../routes/web.php';
 require __DIR__ . '/../routes/api.php';
 
 try {
-    $router->dispatch(Request::fromGlobals());
+    $request = Request::fromGlobals();
+    $request->user = Auth::currentUser();
+    $router->dispatch($request);
 } catch (\Throwable $e) {
     error_log((string) $e);
     if ($debug) {

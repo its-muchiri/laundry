@@ -9,6 +9,7 @@
  * @var \Laundry\Core\Router $router
  */
 
+use Laundry\Controllers\AuthController;
 use Laundry\Controllers\BookingController;
 use Laundry\Controllers\DisputeController;
 use Laundry\Controllers\LoyaltyController;
@@ -19,6 +20,7 @@ use Laundry\Controllers\ReviewController;
 use Laundry\Controllers\StoreController;
 use Laundry\Controllers\SubscriptionController;
 
+$auth = new AuthController();
 $booking = new BookingController();
 $payment = new PaymentController();
 $review = new ReviewController();
@@ -28,6 +30,12 @@ $onboarding = new OnboardingController();
 $operator = new OperatorController();
 $subscription = new SubscriptionController();
 $loyalty = new LoyaltyController();
+
+// Auth (shared identity/auth module — see planning/00-portfolio/shared-architecture.md)
+$router->post('/api/v1/auth/register', [$auth, 'register']);
+$router->post('/api/v1/auth/login', [$auth, 'login']);
+$router->post('/api/v1/auth/logout', [$auth, 'logout']);
+$router->get('/api/v1/auth/me', [$auth, 'me']);
 
 // Bookings
 $router->post('/api/v1/bookings', [$booking, 'create']);
