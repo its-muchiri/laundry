@@ -13,6 +13,10 @@ use Laundry\Config\Database;
 
 $db = Database::connection();
 
+// store_orders.payment_id and payments.order_id reference each other, so break
+// the link before deleting either side.
+$db->exec('UPDATE store_orders SET payment_id = NULL');
+$db->exec('DELETE FROM payments WHERE order_id IS NOT NULL');
 $db->exec('DELETE FROM store_order_items');
 $db->exec('DELETE FROM store_orders');
 $db->exec('DELETE FROM store_products');
