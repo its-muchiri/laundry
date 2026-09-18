@@ -315,3 +315,15 @@ CREATE TABLE store_order_items (
 ) ENGINE=InnoDB;
 
 ALTER TABLE payments ADD CONSTRAINT fk_payments_store_order FOREIGN KEY (order_id) REFERENCES store_orders(id);
+
+-- Store catalog seed — see prd.md's E-Commerce Store Scope. Photo URLs are
+-- verified-resolving Unsplash CDN URLs (checked live, not invented IDs).
+INSERT INTO store_products (category, name, description, price, stock_quantity, image_urls, status) VALUES
+('detergents', 'Fresh Bloom Liquid Laundry Detergent — 2L', 'Concentrated liquid detergent for everyday wash & fold loads.', 850.00, 200, '["https://images.unsplash.com/photo-1550963295-019d8a8a61c5?auto=format&fit=crop&w=800&q=80"]', 'active'),
+('detergents', 'Sunshine Laundry Bar Soap — Pack of 3', 'Multi-purpose bar soap for hand-washing and stain pre-treatment.', 350.00, 300, '["https://images.unsplash.com/photo-1542038335240-86aea625b913?auto=format&fit=crop&w=800&q=80"]', 'active'),
+('packaging', 'Garment Cover Bags — Pack of 10', 'Clear garment covers to protect pressed and dry-cleaned items.', 450.00, 150, '["https://images.unsplash.com/photo-1582479429421-321775166674?auto=format&fit=crop&w=800&q=80"]', 'active'),
+('packaging', 'Heavy-Duty Laundry Bag — Large', 'Durable drawstring laundry bag for pickup and delivery.', 600.00, 150, '["https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=800&q=80"]', 'active'),
+('stain_removal', 'Pro Stain Remover Spray — 500ml', 'Fast-acting spray for oil, grass, and food stains before washing.', 480.00, 180, '["https://images.unsplash.com/photo-1563453392212-326f5e854473?auto=format&fit=crop&w=800&q=80"]', 'active'),
+('equipment', 'Foldable Clothes Drying Rack', 'Space-saving rack for air-drying delicate garments.', 3200.00, 40, '["https://images.unsplash.com/photo-1760727772969-cb5cd59c6f30?auto=format&fit=crop&w=800&q=80"]', 'active'),
+('equipment', 'Handheld Garment Steamer', 'Quick-touch steamer for de-wrinkling without an ironing board.', 4500.00, 35, '["https://images.unsplash.com/photo-1540544093-b0880061e1a5?auto=format&fit=crop&w=800&q=80"]', 'active'),
+('equipment', 'Industrial Detergent Dispenser — Operator Pack', 'Bulk metering dispenser for commercial laundry operators.', 8500.00, 20, '["https://images.unsplash.com/photo-1757233285714-4de702bb8a56?auto=format&fit=crop&w=800&q=80"]', 'active');
