@@ -65,4 +65,17 @@ final class PageController
             'dbError' => $dbError,
         ]);
     }
+
+    public function store(Request $request): void
+    {
+        View::render('store', ['title' => 'Store — detergent, supplies & packaging']);
+    }
+
+    public function storeOrder(Request $request): void
+    {
+        View::render('store-order', [
+            'title' => 'Store order',
+            'orderId' => (int) $request->params['id'],
+        ]);
+    }
 }

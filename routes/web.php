@@ -18,6 +18,8 @@ $auth = new AuthController();
 $router->get('/', [$page, 'home']);
 $router->get('/book', [$page, 'bookForm']);
 $router->get('/bookings/{id}', [$page, 'bookingStatus']);
+$router->get('/store', [$page, 'store']);
+$router->get('/store/orders/{id}', [$page, 'storeOrder']);
 
 $router->get('/signup', [$auth, 'showSignup']);
 $router->post('/signup', [$auth, 'register']);

@@ -74,6 +74,9 @@ $router->post('/api/v1/operators/onboard', [$onboarding, 'submit']);
 // Store
 $router->get('/api/v1/store/products', [$store, 'listProducts']);
 $router->post('/api/v1/store/orders', [$store, 'createOrder']);
+$router->get('/api/v1/store/orders', [$store, 'myOrders']);
+$router->get('/api/v1/store/orders/{id}', [$store, 'showOrder']);
+$router->post('/api/v1/store/orders/{id}/cancel', [$store, 'cancelOrder']);
 
 // Subscriptions (V2 retention — see build-sequencing-roadmap.md)
 $router->get('/api/v1/subscriptions/plans', [$subscription, 'listPlans']);

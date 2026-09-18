@@ -24,8 +24,9 @@ use Throwable;
 final class PaymentController
 {
     /**
-     * Initiates an M-Pesa STK Push for a booking's estimated (or, once
-     * confirmed, final) price. Records a pending `payments` row keyed by
+     * Initiates an M-Pesa STK Push for either a booking's estimated (or,
+     * once confirmed, final) price (`booking_id`) or a store order's total
+     * (`store_order_id`). Records a pending `payments` row keyed by
      * Daraja's CheckoutRequestID — mpesaCallback() reconciles it once
      * Safaricom calls back.
      */
@@ -37,30 +38,68 @@ final class PaymentController
         }
 
         $bookingId = (int) $request->input('booking_id', 0);
-        if ($bookingId <= 0) {
-            Response::error('booking_id is required', 422);
+        $storeOrderId = (int) $request->input('store_order_id', 0);
+        if (($bookingId > 0) === ($storeOrderId > 0)) {
+            Response::error('Provide exactly one of booking_id or store_order_id', 422);
             return;
         }
 
         $db = Database::connection();
-        $stmt = $db->prepare('SELECT * FROM laundry_bookings WHERE id = :id');
-        $stmt->execute(['id' => $bookingId]);
-        $booking = $stmt->fetch();
 
-        if (!$booking) {
-            Response::notFound('Booking not found');
-            return;
-        }
-        if ((int) $booking['customer_id'] !== (int) $user['id']) {
-            Response::forbidden('This booking does not belong to you');
-            return;
-        }
-        if ($booking['payment_id'] !== null) {
-            $existing = self::fetchPayment($db, (int) $booking['payment_id']);
-            if ($existing && $existing['status'] === 'completed') {
-                Response::error('This booking has already been paid', 409);
+        if ($bookingId > 0) {
+            $stmt = $db->prepare('SELECT * FROM laundry_bookings WHERE id = :id');
+            $stmt->execute(['id' => $bookingId]);
+            $booking = $stmt->fetch();
+
+            if (!$booking) {
+                Response::notFound('Booking not found');
                 return;
             }
+            if ((int) $booking['customer_id'] !== (int) $user['id']) {
+                Response::forbidden('This booking does not belong to you');
+                return;
+            }
+            if ($booking['payment_id'] !== null) {
+                $existing = self::fetchPayment($db, (int) $booking['payment_id']);
+                if ($existing && $existing['status'] === 'completed') {
+                    Response::error('This booking has already been paid', 409);
+                    return;
+                }
+            }
+
+            $amount = (float) ($booking['final_price'] ?? $booking['estimated_price']);
+            $accountReference = 'BOOKING' . $bookingId;
+            $description = 'laundry.co.ke booking #' . $bookingId;
+        } else {
+            $stmt = $db->prepare('SELECT * FROM store_orders WHERE id = :id');
+            $stmt->execute(['id' => $storeOrderId]);
+            $order = $stmt->fetch();
+
+            if (!$order) {
+                Response::notFound('Store order not found');
+                return;
+            }
+            if ((int) $order['customer_id'] !== (int) $user['id']) {
+                Response::forbidden('This order does not belong to you');
+                return;
+            }
+            if ($order['status'] !== 'pending') {
+                Response::error('This order is ' . $order['status'] . ' and can no longer be paid', 409);
+                return;
+            }
+
+            $inFlight = $db->prepare(
+                'SELECT COUNT(*) FROM payments WHERE order_id = :id AND status = \'pending\' AND created_at > ' . StoreController::cutoffSql()
+            );
+            $inFlight->execute(['id' => $storeOrderId]);
+            if ((int) $inFlight->fetchColumn() > 0) {
+                Response::error('An M-Pesa prompt was already sent for this order — check your phone, or wait a few minutes and try again.', 409);
+                return;
+            }
+
+            $amount = (float) $order['total_amount'];
+            $accountReference = 'STORE' . $storeOrderId;
+            $description = 'laundry.co.ke store order #' . $storeOrderId;
         }
 
         $phone = trim((string) $request->input('phone', $user['phone_number'] ?? ''));
@@ -74,9 +113,8 @@ final class PaymentController
             return;
         }
 
-        $amount = (float) ($booking['final_price'] ?? $booking['estimated_price']);
         if ($amount <= 0) {
-            Response::error('This booking has no payable amount', 422);
+            Response::error('There is no payable amount', 422);
             return;
         }
 
@@ -90,12 +128,7 @@ final class PaymentController
         }
 
         try {
-            $daraja = Mpesa::stkPush(
-                $phone,
-                $amount,
-                'BOOKING' . $bookingId,
-                'laundry.co.ke booking #' . $bookingId
-            );
+            $daraja = Mpesa::stkPush($phone, $amount, $accountReference, $description);
         } catch (Throwable $e) {
             error_log((string) $e);
             Response::error('Could not reach M-Pesa: ' . $e->getMessage(), 502);
@@ -111,19 +144,24 @@ final class PaymentController
         $db->beginTransaction();
         try {
             $insert = $db->prepare(
-                'INSERT INTO payments (user_id, booking_id, type, method, amount, currency, external_reference, status, created_at, updated_at)
-                 VALUES (:user_id, :booking_id, \'charge\', \'mpesa_stk\', :amount, \'KES\', :external_reference, \'pending\', NOW(), NOW())'
+                'INSERT INTO payments (user_id, booking_id, order_id, type, method, amount, currency, external_reference, status, created_at, updated_at)
+                 VALUES (:user_id, :booking_id, :order_id, \'charge\', \'mpesa_stk\', :amount, \'KES\', :external_reference, \'pending\', NOW(), NOW())'
             );
             $insert->execute([
                 'user_id' => $user['id'],
-                'booking_id' => $bookingId,
+                'booking_id' => $bookingId > 0 ? $bookingId : null,
+                'order_id' => $storeOrderId > 0 ? $storeOrderId : null,
                 'amount' => $amount,
                 'external_reference' => $checkoutRequestId,
             ]);
             $paymentId = (int) $db->lastInsertId();
 
-            $update = $db->prepare('UPDATE laundry_bookings SET payment_id = :payment_id, updated_at = NOW() WHERE id = :id');
-            $update->execute(['payment_id' => $paymentId, 'id' => $bookingId]);
+            // Bookings link to their (latest) payment immediately; store
+            // orders only link once the payment completes (see mpesaCallback).
+            if ($bookingId > 0) {
+                $update = $db->prepare('UPDATE laundry_bookings SET payment_id = :payment_id, updated_at = NOW() WHERE id = :id');
+                $update->execute(['payment_id' => $paymentId, 'id' => $bookingId]);
+            }
 
             $db->commit();
         } catch (Throwable $e) {
@@ -222,6 +260,20 @@ final class PaymentController
 
                 if ($payment['booking_id']) {
                     Escrow::hold($db, (int) $payment['id'], (int) $payment['booking_id'], (float) $payment['amount']);
+                } elseif ($payment['order_id']) {
+                    // Store sale: platform-owned inventory, so no escrow —
+                    // the order is simply marked paid and linked to its payment.
+                    $orderUpdate = $db->prepare(
+                        'UPDATE store_orders SET status = \'paid\', payment_id = :payment_id, updated_at = NOW()
+                         WHERE id = :id AND status = \'pending\''
+                    );
+                    $orderUpdate->execute(['payment_id' => $payment['id'], 'id' => $payment['order_id']]);
+                    if ($orderUpdate->rowCount() === 0) {
+                        // Paid after the order was cancelled (customer entered their PIN
+                        // past the cancel window) — the money is real but there's no
+                        // order to fulfil, so flag it loudly for a manual refund.
+                        error_log("M-Pesa payment {$payment['id']} completed for non-pending store order {$payment['order_id']} — manual refund required");
+                    }
                 }
             } else {
                 $update = $db->prepare('UPDATE payments SET status = \'failed\', updated_at = NOW() WHERE id = :id');

@@ -44,6 +44,23 @@ h1, h2, h3 {
   border-bottom: 1px solid var(--ac-paper-deep);
 }
 
+.site-header {
+  flex-wrap: wrap;
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ac-space-3);
+}
+
+/* Compact header buttons so the nav fits a 360px phone on one or two rows. */
+.site-nav .btn {
+  padding: var(--ac-space-2) var(--ac-space-3);
+  white-space: nowrap;
+}
+
 .site-footer {
   padding-block: var(--ac-space-12);
   border-top: 1px solid var(--ac-paper-deep);
@@ -214,4 +231,165 @@ h1, h2, h3 {
  */
 .critical-flow * {
   animation: none !important;
+}
+
+/* ---- Store ---- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.field {
+  display: block;
+  width: 100%;
+  padding: var(--ac-space-2);
+  margin-top: var(--ac-space-1);
+  font: inherit;
+}
+
+.store-layout {
+  display: grid;
+  gap: var(--ac-space-8);
+  margin-top: var(--ac-space-6);
+  align-items: start;
+}
+
+@media (min-width: 60rem) {
+  .store-layout {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
+  .cart-panel {
+    position: sticky;
+    top: var(--ac-space-4);
+  }
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-2);
+  margin-bottom: var(--ac-space-4);
+}
+
+.chip {
+  padding: var(--ac-space-2) var(--ac-space-4);
+  border-radius: var(--ac-radius-sticker);
+  border: 2px solid var(--ac-accent);
+  background: transparent;
+  color: var(--ac-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--ac-accent);
+  color: var(--ac-accent-contrast);
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
+  gap: var(--ac-space-4);
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.product-card .btn {
+  margin-top: auto;
+}
+
+/* The gradient underlay means a slow/failed photo shows a sized colour block
+   rather than collapsing the card or showing a broken-image icon. */
+.product-card__media {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--ac-radius-control);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--ac-paper-deep), color-mix(in srgb, var(--ac-accent) 25%, var(--ac-paper-deep)));
+}
+
+.product-card__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-card__desc {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--ac-ink) 75%, transparent);
+}
+
+.product-card__price {
+  font-weight: 700;
+}
+
+.cart-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--ac-space-1) var(--ac-space-3);
+  padding-block: var(--ac-space-3);
+  border-bottom: 1px solid var(--ac-paper-deep);
+}
+
+.cart-line__qty {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.cart-line__price {
+  text-align: right;
+  font-weight: 600;
+}
+
+.qty-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--ac-radius-control);
+  border: 1px solid var(--ac-accent);
+  background: transparent;
+  color: var(--ac-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cart-total {
+  margin-top: var(--ac-space-3);
+  font-weight: 700;
+}
+
+#checkout-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+  margin-top: var(--ac-space-4);
+}
+
+#checkout-form[hidden] {
+  display: none;
+}
+
+.order-lines {
+  list-style: none;
+  padding: 0;
+  margin-top: var(--ac-space-3);
+}
+
+.order-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  padding-block: var(--ac-space-2);
+  border-bottom: 1px solid var(--ac-paper-deep);
 }

@@ -20,7 +20,8 @@ $pageTitle = isset($title) ? $title . ' — laundry.co.ke' : 'laundry.co.ke';
 <body>
   <header class="site-header container">
     <a href="/" style="text-decoration:none;color:inherit;"><strong>laundry.co.ke</strong></a>
-    <nav aria-label="Primary" style="display:flex; align-items:center; gap: var(--ac-space-3);">
+    <nav aria-label="Primary" class="site-nav">
+      <a href="/store" class="btn btn--secondary">Store</a>
       <a href="/book" class="btn btn--secondary">Book a pickup</a>
       <?php if (!empty($currentUser)): ?>
         <span class="card__meta">Hi, <?= View::e($currentUser['full_name']) ?></span>
