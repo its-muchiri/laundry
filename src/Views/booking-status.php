@@ -19,6 +19,7 @@ use Laundry\Core\View;
 
   <div id="payment-section" style="max-width: 28rem; margin-top: var(--ac-space-6);"></div>
   <div id="receipt-section" style="max-width: 28rem; margin-top: var(--ac-space-4);"></div>
+  <div id="review-section" style="max-width: 28rem; margin-top: var(--ac-space-4);"></div>
 
   <script type="module">
     import { createStatusTimeline, LAUNDRY_BOOKING_STEPS } from "/assets/js/components/status-timeline.js";
@@ -28,7 +29,9 @@ use Laundry\Core\View;
     const badgeContainer = document.getElementById("status-badge-container");
     const paymentSection = document.getElementById("payment-section");
     const receiptSection = document.getElementById("receipt-section");
+    const reviewSection = document.getElementById("review-section");
     const bookingId = <?= $bookingId ?>;
+    let reviewSubmitted = false;
     const BADGE_TONE = {
       requested: "neutral", matched: "accent", picked_up: "accent", washing: "warning",
       ready: "accent", out_for_delivery: "accent", delivered: "success", cancelled: "danger", disputed: "danger",
@@ -121,6 +124,69 @@ use Laundry\Core\View;
       });
     }
 
+    function renderReviewSection(booking) {
+      if (booking.status !== "delivered" || reviewSubmitted) {
+        if (booking.status !== "delivered") {
+          reviewSection.innerHTML = "";
+        }
+        return;
+      }
+
+      reviewSection.innerHTML = `
+        <form id="review-form" style="display:flex; flex-direction:column; gap: var(--ac-space-2);">
+          <label>
+            Rate your pickup
+            <select name="rating" required style="display:block; width:100%; padding: var(--ac-space-2); margin-top: var(--ac-space-1);">
+              <option value="">Select a rating</option>
+              <option value="5">5 - Excellent</option>
+              <option value="4">4 - Good</option>
+              <option value="3">3 - Okay</option>
+              <option value="2">2 - Poor</option>
+              <option value="1">1 - Very poor</option>
+            </select>
+          </label>
+          <label>
+            Comment (optional)
+            <textarea name="comment" rows="3" style="display:block; width:100%; padding: var(--ac-space-2); margin-top: var(--ac-space-1);"></textarea>
+          </label>
+          <button type="submit" class="btn btn--primary">Submit review</button>
+          <p id="review-status" class="card__meta"></p>
+        </form>
+      `;
+
+      document.getElementById("review-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const reviewStatus = document.getElementById("review-status");
+        const formData = new FormData(event.target);
+        reviewStatus.textContent = "Submitting…";
+        try {
+          const res = await fetch(`/api/v1/bookings/${bookingId}/review`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rating: Number(formData.get("rating")), comment: formData.get("comment") }),
+          });
+          const data = await res.json();
+          if (res.status === 409) {
+            reviewSubmitted = true;
+            reviewSection.innerHTML = `<p class="card__meta">You've already reviewed this booking — thank you!</p>`;
+            return;
+          }
+          if (res.status === 401) {
+            reviewStatus.textContent = "Log in to leave a review.";
+            return;
+          }
+          if (!res.ok) {
+            reviewStatus.textContent = data.error || "Could not submit review.";
+            return;
+          }
+          reviewSubmitted = true;
+          reviewSection.innerHTML = `<p class="card__meta">Thanks for your review!</p>`;
+        } catch (e) {
+          reviewStatus.textContent = "Network error: " + e.message;
+        }
+      });
+    }
+
     async function refresh() {
       try {
         const res = await fetch(`/api/v1/bookings/${bookingId}`);
@@ -135,6 +201,7 @@ use Laundry\Core\View;
 
         renderPaymentSection(booking);
         renderReceiptSection(booking);
+        renderReviewSection(booking);
       } catch {
         // Polling failure is non-fatal — just retry on the next interval.
       }

@@ -115,7 +115,8 @@ CREATE TABLE reviews (
     reviewee_id BIGINT NOT NULL REFERENCES users(id),
     rating SMALLINT NOT NULL,
     comment TEXT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (booking_id, reviewer_id)
 );
 
 -- category values for this platform: item_damaged, item_lost, poor_quality, price_disagreement, other

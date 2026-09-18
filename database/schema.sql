@@ -125,7 +125,8 @@ CREATE TABLE reviews (
     comment TEXT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (reviewer_id) REFERENCES users(id),
-    FOREIGN KEY (reviewee_id) REFERENCES users(id)
+    FOREIGN KEY (reviewee_id) REFERENCES users(id),
+    UNIQUE KEY uq_reviews_booking_reviewer (booking_id, reviewer_id)
 ) ENGINE=InnoDB;
 
 -- category values for this platform: item_damaged, item_lost, poor_quality, price_disagreement, other
