@@ -5,6 +5,7 @@ namespace Laundry\Controllers;
 use DateTimeImmutable;
 use Laundry\Config\Database;
 use Laundry\Core\Auth;
+use Laundry\Core\Escrow;
 use Laundry\Core\Request;
 use Laundry\Core\Response;
 use PDO;
@@ -279,6 +280,14 @@ final class BookingController
             return;
         }
 
+        if ($booking['payment_id']) {
+            $paymentStmt = $db->prepare('SELECT id, status, method, amount, external_reference FROM payments WHERE id = :id');
+            $paymentStmt->execute(['id' => $booking['payment_id']]);
+            $booking['payment'] = $paymentStmt->fetch() ?: null;
+        } else {
+            $booking['payment'] = null;
+        }
+
         Response::json($booking);
     }
 
@@ -329,17 +338,63 @@ final class BookingController
 
     public function confirmReceipt(Request $request): void
     {
-        if (!Auth::requireUser($request)) {
+        $user = Auth::requireUser($request);
+        if (!$user) {
             return;
         }
 
-        // TODO: call into the shared Escrow Engine to release payment to the
-        // operator minus commission. See shared-architecture.md.
+        $bookingId = (int) $request->params['id'];
         $db = Database::connection();
-        $stmt = $db->prepare('UPDATE laundry_bookings SET status = \'delivered\', updated_at = NOW() WHERE id = :id');
-        $stmt->execute(['id' => $request->params['id']]);
+        $db->beginTransaction();
 
-        Response::json(['id' => (int) $request->params['id'], 'status' => 'delivered', 'escrow' => 'release_pending']);
+        try {
+            $stmt = $db->prepare('SELECT * FROM laundry_bookings WHERE id = :id FOR UPDATE');
+            $stmt->execute(['id' => $bookingId]);
+            $booking = $stmt->fetch();
+
+            if (!$booking) {
+                $db->rollBack();
+                Response::notFound('Booking not found');
+                return;
+            }
+            if ((int) $booking['customer_id'] !== (int) $user['id']) {
+                $db->rollBack();
+                Response::forbidden('This booking does not belong to you');
+                return;
+            }
+            if (in_array($booking['status'], ['cancelled', 'disputed'], true)) {
+                $db->rollBack();
+                Response::error("Booking is {$booking['status']} and cannot be marked delivered", 422);
+                return;
+            }
+
+            // Idempotent: confirming twice just returns the already-settled state.
+            if ($booking['status'] === 'delivered') {
+                $db->commit();
+                Response::json(['id' => $bookingId, 'status' => 'delivered', 'escrow' => 'already_settled']);
+                return;
+            }
+
+            $update = $db->prepare('UPDATE laundry_bookings SET status = \'delivered\', updated_at = NOW() WHERE id = :id');
+            $update->execute(['id' => $bookingId]);
+
+            $escrowResult = null;
+            if ($booking['operator_id']) {
+                $escrowResult = Escrow::release($db, $bookingId, (int) $booking['operator_id']);
+            }
+
+            $db->commit();
+        } catch (Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
+
+        Response::json([
+            'id' => $bookingId,
+            'status' => 'delivered',
+            'escrow' => $escrowResult !== null ? 'released' : 'none_held',
+            'payout' => $escrowResult,
+        ]);
     }
 
     public function cancel(Request $request): void

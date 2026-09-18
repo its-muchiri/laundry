@@ -97,6 +97,12 @@ CREATE TABLE commission_rules (
     effective_to TIMESTAMP NULL
 ) ENGINE=InnoDB;
 
+-- Default commission rate: 18% (midpoint of prd.md's proposed 15-20% range,
+-- flagged in open-questions.md as needing stakeholder confirmation).
+-- src/Core/Escrow.php falls back to this same 18% if this row is ever removed.
+INSERT INTO commission_rules (platform, category, commission_type, value, effective_from)
+VALUES ('laundry', 'laundry_booking', 'percentage', 18.00, CURRENT_TIMESTAMP);
+
 CREATE TABLE kyc_documents (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
